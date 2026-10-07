@@ -1,13 +1,13 @@
 package internalrouter
 
 import(
-	upstream "sshGateway/sshListener"
+	frontend "sshGateway/sshListener"
 )
 
 var ActiveConns map[string]ConnEntry
 
 type ConnEntry struct {
-	WantedRes upstream.RequestedResource
+	WantedRes frontend.RequestedResource
 	backendUp bool
 	backendAddr string
 }

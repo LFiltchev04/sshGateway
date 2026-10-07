@@ -32,12 +32,25 @@ func (s *StaticResolver) RemoveStaticResolveEntry(key string) {
 
 
 
+
+type dbImpl interface {
+	isPresent(key string) bool
+	getRef(key string) string
+}
+
 type DatabaseBackedResolver struct{
-	dbUrl string
+	typeName string
+	resolvImpl dbImpl
 }
 
 func (d DatabaseBackedResolver) resolve(req frontend.RequestedResource) string {
 	//not today
-
+	if d.resolvImpl.isPresent(req.EnvName) {
+		return d.resolvImpl.getRef(req.EnvName)
+	}
+	
 	return "buzz off"
+}
+func (d *DatabaseBackedResolver) SetDatabaseImpl(impl dbImpl) {
+	
 }
