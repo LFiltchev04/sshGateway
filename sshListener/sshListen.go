@@ -42,28 +42,26 @@ func StartListener(port int) {
 			continue
 		}
 
-		go func() {
+		go func(cn net.Conn) {
 			var conf ssh.ServerConfig
 			conf.PasswordCallback = AuthCb
 			conf.NoClientAuth = false
 			conf.AddHostKey(key)
 			
-			_, chans, reqs, err := ssh.NewServerConn(conn, &conf)
+			sshConn, chans, _, err := ssh.NewServerConn(cn, &conf)
 			if err != nil {
 				log.Printf("Failed to handshake: %v", err)
 				return
 			}
 
-			for rq := range reqs {
-				log.Printf("Request type: %v", rq.Type)
-				
-				log.Printf("Request: %v", rq)
-			}
-			go ssh.DiscardRequests(reqs)
+			
+			go HandleInputChannel(sshConn, nil, chans)
+			
+			println("SSH connection established")
 
-			for newChannel := range chans {
-				newChannel.Reject(ssh.Prohibited, "No channels are allowed")
-			}
-		}()
+
+			
+
+		}(conn)
 	}
 }
