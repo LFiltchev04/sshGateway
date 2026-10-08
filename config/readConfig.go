@@ -38,3 +38,44 @@ func InitConfig() {
 
 	Gconfig = config
 }
+
+
+func (g *GlobalConfig) GetListenEndpoint() string {
+	return g.ListenEndpoint
+}
+
+func (g* GlobalConfig) GetSSHKey() (string, error) {
+	file, err := os.Open(g.EcdsaKey)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+func isStaticRoute(resource string) bool {
+	for _, route := range Gconfig.StaticRoutes {
+		if route.Resource == resource {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *GlobalConfig) GetStaticRouteTarget(resource string) (string, bool) {
+	for _, route := range g.StaticRoutes {
+		if route.Resource == resource {
+			return route.Target, true
+		}
+	}
+	return "", false
+}
+
+func (g *GlobalConfig) GetAllStaticRoutes() []StaticRoutes {
+	return g.StaticRoutes
+}
