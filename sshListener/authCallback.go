@@ -18,6 +18,7 @@ type RequestedResource struct{
 }
 
 func unameParser(input string) (RequestedResource, error) {
+	println("Parsing uname:", input)
 	var returnable RequestedResource
 	var tmp []string
 	tmp = strings.Split(input, "/")

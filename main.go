@@ -1,10 +1,14 @@
 package main
 
-import(
+import (
+
 	"sshGateway/config"
+	sshlistener "sshGateway/sshListener"
+
 )
 
-
-func main(){
+func main() {
 	config.InitConfig()
+	sshlistener.StartListener(9090)
+
 }

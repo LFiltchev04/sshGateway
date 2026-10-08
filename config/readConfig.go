@@ -1,36 +1,40 @@
 package config
 
-import(
+import (
 	"github.com/go-yaml/yaml"
+	"io"
 	"os"
 )
 
 type StaticRoutes struct {
-	Source string `yaml:"endpoint"`
+	Resource string `yaml:"resource"`
+	Target string `yaml:"target"`
 }
 
 type GlobalConfig struct {
-	StaticRoutes 		[]StaticRoutes 	`yaml:"staticRoutes"`
-	ListenEndpoint 		  string 	`yaml:"listenEndpoint"`
-	KubernetesControlEndp string 	`yaml:"kubernetesControlEndp"`
-	ecdhsKey 			  string 	`yaml:"ecdhsKey"`
+	ListenEndpoint        string         `yaml:"listenEndpoint"`
+	StaticRoutes          []StaticRoutes `yaml:"staticRoutes"`
+	KubernetesControlEndp string         `yaml:"kubernetesControlEndp"`
+	EcdsaKey              string         `yaml:"ecdsaKey"`
 }
 
-func InitConfig(){
+var Gconfig GlobalConfig
+func InitConfig() {
 	file, err := os.Open("config.yaml")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 
-
-
 	decoder := yaml.NewDecoder(file)
 	var config GlobalConfig
 	err = decoder.Decode(&config)
+	if err == io.EOF {
+		return
+	}
 	if err != nil {
 		panic(err)
 	}
 
-
+	Gconfig = config
 }
