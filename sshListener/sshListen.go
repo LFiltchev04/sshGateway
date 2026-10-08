@@ -17,7 +17,12 @@ import (
 
 func StartListener(port int) {
 	
-	key, err := ssh.ParsePrivateKey([]byte(config.Gconfig.EcdsaKey))
+	keyContent, err := config.Gconfig.GetSSHKey()
+	if err != nil {
+		log.Fatal("Failed to get SSH key: ", err)
+		panic(err)
+	}
+	key, err := ssh.ParsePrivateKey([]byte(keyContent))
 	if(err != nil){
 		log.Fatal("Failed to parse private key: ", err)
 		panic(err)
@@ -39,6 +44,7 @@ func StartListener(port int) {
 
 		go func() {
 			var conf ssh.ServerConfig
+			conf.PasswordCallback = AuthCb
 			conf.NoClientAuth = false
 			conf.AddHostKey(key)
 			

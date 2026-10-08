@@ -20,7 +20,7 @@ type GlobalConfig struct {
 
 var Gconfig GlobalConfig
 func InitConfig() {
-	file, err := os.Open("config.yaml")
+	file, err := os.Open("./config.yaml")
 	if err != nil {
 		panic(err)
 	}
