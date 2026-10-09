@@ -2,8 +2,8 @@ package downstream
 
 import (
 	//"io"
+	"io"
 	"log"
-	"os"
 
 	"golang.org/x/crypto/ssh"
 	//"net"
@@ -11,7 +11,7 @@ import (
 )
 
 
-func  DownstreamHandshake() {
+func  DownstreamHandshake(writer io.ReadWriter) {
 	config := &ssh.ClientConfig{
 		User: "llf",
 		Auth: []ssh.AuthMethod{
@@ -31,9 +31,9 @@ func  DownstreamHandshake() {
 		log.Fatalf("Failed to create SSH session: %v", err)
 	}
 
-	session.Stdin = os.Stdin
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
+	session.Stdin = writer
+	session.Stdout = writer
+	session.Stderr = writer
 
 	session.RequestPty("xterm", 24, 80, ssh.TerminalModes{})
 	session.Shell()

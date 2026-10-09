@@ -3,7 +3,7 @@ package internalrouter
 
 import(
 	frontend "sshGateway/sshListener"
-	config "sshGateway/config"
+	//config "sshGateway/config"
 
 )
 

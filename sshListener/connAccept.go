@@ -2,6 +2,7 @@ package sshlistener
 
 import(
 	"golang.org/x/crypto/ssh"
+	"sshGateway/downstream"
 )
 
 func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-chan ssh.NewChannel) {
@@ -14,10 +15,20 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 		}
 		nChan.Write([]byte("Hello from server"))
 
-		func (rChan <-chan *ssh.Request) {
-			for req := range rChan {
-				go RequestHandle(*req, nChan)
-			}
-		}(rChan)
+		select {
+			case r := <-rChan:
+				println("Request channel sent to handler")
+				if r != nil {
+					println("Received request")
+
+					r.Reply(true, nil)
+					
+					downstream.DownstreamHandshake(nChan.Stderr())
+				
+				}
+		}
+
+
+		println("Channel handling completed")
 	}
 }

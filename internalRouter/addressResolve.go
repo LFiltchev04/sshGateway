@@ -34,6 +34,6 @@ func (s *StaticResolver) RemoveStaticResolveEntry(key string) {
 
 
 type dbImpl interface {
-	isPresent(key string) bool
-	getRef(key string) string
+	isPresent(key string, envName string) bool
+	getRef(key string, envName string) string
 }
