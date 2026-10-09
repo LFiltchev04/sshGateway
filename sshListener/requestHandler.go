@@ -1,6 +1,8 @@
 package sshlistener
 
-import(
+import (
+	"bytes"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -29,19 +31,22 @@ func RequestHandle(req ssh.Request, ch ssh.Channel) {
 				println("Replying to shell")
 			}
 
+			var staticB [32]byte
+			var buf bytes.Buffer
+			buf.Grow(1024)
 			for{
-				buf := make([]byte, 1024)
-				n, err := ch.Read(buf)
+				
+				n, err := ch.Read(staticB[:])
 				if err != nil {
 					println("Failed to read from shell channel: ", err)
 					break
-				} else {
-					println("Read from shell channel: ", string(buf[:n]))
 				}
-
-				buf[n] = '\n'
-				buf[n+1] = '\r'
-				ch.Write(buf[:n+2])
+				
+				
+				buf.Write(staticB[:n])
+				
+				
+				ch.Write(buf.Bytes())
 			}
 
 	

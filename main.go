@@ -3,12 +3,16 @@ package main
 import (
 
 	"sshGateway/config"
-	sshlistener "sshGateway/sshListener"
+	//sshlistener "sshGateway/sshListener"
+	sshdownstream "sshGateway/downstream"
 
 )
 
 func main() {
 	config.InitConfig()
-	sshlistener.StartListener(9090)
+	println("Starting SSH listener")
+	//go sshlistener.StartListener(9090)
+	println("Starting downstream handshake")
+	sshdownstream.DownstreamHandshake()
 
 }

@@ -1,65 +1,46 @@
 package downstream
 
-
-import(
-	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
+import (
+	//"io"
 	"log"
-	"net"
 	"os"
+
+	"golang.org/x/crypto/ssh"
+	//"net"
+	//"os"
 )
 
 
 func  DownstreamHandshake() {
-	socketPath := "192.168.1.40"
-	if socketPath == "" {
-		log.Fatal("SSH_AUTH_SOCK environment variable is not set")
-	}
-
-	conn, err := net.Dial("unix", socketPath)
-	if err != nil {
-		log.Fatalf("Failed to connect to SSH agent socket: %v", err)
-	}
-	defer conn.Close()
-
-	agentClient := agent.NewClient(conn)
-	
 	config := &ssh.ClientConfig{
-		User: "your-username",
+		User: "llf",
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeysCallback(agentClient.Signers),
+			ssh.Password("alabala1"),
 		},
-		// WARNING: For production, use a proper ssh.HostKeyCallback instead of InsecureIgnoreHostKey
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	client, err := ssh.Dial("tcp", "example.com:22", config)
+	client, err := ssh.Dial("tcp", "192.168.1.40:22", config)
 	if err != nil {
 		log.Fatalf("Failed to dial SSH server: %v", err)
 	}
 	defer client.Close()
 
-	clientSession, err := client.NewSession()
+	session, err := client.NewSession()
 	if err != nil {
 		log.Fatalf("Failed to create SSH session: %v", err)
 	}
-	defer clientSession.Close()
 
-	clientSession.Stdin = os.Stdin
-	clientSession.Stdout = os.Stdout
-	clientSession.Stderr = os.Stderr
+	session.Stdin = os.Stdin
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
 
-	err = clientSession.RequestPty("xterm", 80, 40, ssh.TerminalModes{
-		ssh.ECHO:          0,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	})
-	if err != nil {
-		log.Fatalf("Failed to request PTY: %v", err)
-	}
+	session.RequestPty("xterm", 24, 80, ssh.TerminalModes{})
+	session.Shell()
+
+	println("completed")
 	
-	err = clientSession.Shell()
-	if err != nil {
-		log.Fatalf("Failed to start shell: %v", err)
-	}
+	session.Wait()
+
+	
 }
