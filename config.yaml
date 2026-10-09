@@ -7,4 +7,7 @@ staticRoutes:
   - resource: "nix"
     target: "192.168.1.206" #questionable
 kubernetesControlEndp: "junk"
-ecdsaKey: "./server_id_ed25519" 
+ecdsaKey: "./server_id_ed25519"
+databasePath:
+  - accessPath: "setLater"
+    type: "postgres"

@@ -10,15 +10,23 @@ type StaticRoutes struct {
 	Resource string `yaml:"resource"`
 	Target string `yaml:"target"`
 }
+type DbType struct {
+	AccessPath string `yaml:"accessPath"`
+	Type string `yaml:"type"`
+}
 
 type GlobalConfig struct {
 	ListenEndpoint        string         `yaml:"listenEndpoint"`
 	StaticRoutes          []StaticRoutes `yaml:"staticRoutes"`
 	KubernetesControlEndp string         `yaml:"kubernetesControlEndp"`
 	EcdsaKey              string         `yaml:"ecdsaKey"`
+	DatabasePath          []DbType       `yaml:"databasePath"`
 }
 
+
+//global config struct as coming over from config yaml
 var Gconfig GlobalConfig
+
 func InitConfig() {
 	file, err := os.Open("./config.yaml")
 	if err != nil {

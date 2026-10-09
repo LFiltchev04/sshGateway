@@ -38,12 +38,12 @@ type dbImpl interface {
 	getRef(key string) string
 }
 
-type DatabaseBackedResolver struct{
+type PostgresBackedResolver struct{
 	typeName string
 	resolvImpl dbImpl
 }
 
-func (d DatabaseBackedResolver) resolve(req frontend.RequestedResource) string {
+func (d PostgresBackedResolver) Resolve(req frontend.RequestedResource) string {
 	//not today
 	if d.resolvImpl.isPresent(req.EnvName) {
 		return d.resolvImpl.getRef(req.EnvName)
@@ -51,6 +51,6 @@ func (d DatabaseBackedResolver) resolve(req frontend.RequestedResource) string {
 	
 	return "buzz off"
 }
-func (d *DatabaseBackedResolver) SetDatabaseImpl(impl dbImpl) {
-	
+func (d *PostgresBackedResolver) SetDatabaseImpl(impl dbImpl) {
+	d.resolvImpl = impl
 }
