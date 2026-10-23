@@ -31,8 +31,6 @@ func InitRouter() {
 					slog.Warn("database path is empty", "type", db.Type)
 				}
 
-				
-
 			}
 		}
 	}

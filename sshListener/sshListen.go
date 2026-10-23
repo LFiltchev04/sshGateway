@@ -48,17 +48,14 @@ func StartListener(port int) {
 			conf.NoClientAuth = false
 			conf.AddHostKey(key)
 			
-			sshConn, chans, _, err := ssh.NewServerConn(cn, &conf)
+			sshConn, chans, reqs, err := ssh.NewServerConn(cn, &conf)
 			if err != nil {
 				log.Printf("Failed to handshake: %v", err)
 				return
 			}
 
 			
-			go HandleInputChannel(sshConn, nil, chans)
-			
-			println("SSH connection established")
-
+			HandleInputChannel(sshConn, reqs, chans)
 
 			
 

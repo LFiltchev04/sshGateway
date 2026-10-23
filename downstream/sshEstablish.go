@@ -10,8 +10,7 @@ import (
 	//"os"
 )
 
-
-func  DownstreamHandshake(writer io.ReadWriter) {
+func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, ready chan<- *ssh.Session) {
 	config := &ssh.ClientConfig{
 		User: "llf",
 		Auth: []ssh.AuthMethod{
@@ -22,25 +21,43 @@ func  DownstreamHandshake(writer io.ReadWriter) {
 
 	client, err := ssh.Dial("tcp", "192.168.1.40:22", config)
 	if err != nil {
-		log.Fatalf("Failed to dial SSH server: %v", err)
+		log.Printf("Failed to dial SSH server: %v", err)
+		ready <- nil
+		return
 	}
-	defer client.Close()
 
 	session, err := client.NewSession()
 	if err != nil {
-		log.Fatalf("Failed to create SSH session: %v", err)
+		log.Printf("Failed to create SSH session: %v", err)
+		client.Close()
+		ready <- nil
+		return
 	}
 
-	session.Stdin = writer
+	session.Stdin = reader
 	session.Stdout = writer
 	session.Stderr = writer
 
-	session.RequestPty("xterm", 24, 80, ssh.TerminalModes{})
-	session.Shell()
+	if err := session.RequestPty("xterm-256color", 24, 80, ssh.TerminalModes{}); err != nil {
+		log.Printf("Failed to request downstream PTY: %v", err)
+		session.Close()
+		client.Close()
+		ready <- nil
+		return
+	}
+	if err := session.Shell(); err != nil {
+		log.Printf("Failed to start downstream shell: %v", err)
+		session.Close()
+		client.Close()
+		ready <- nil
+		return
+	}
 
 	println("completed")
-	
-	session.Wait()
 
-	
+	ready <- session
+	if err := session.Wait(); err != nil {
+		log.Printf("Downstream session ended: %v", err)
+	}
+	client.Close()
 }
