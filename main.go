@@ -12,8 +12,7 @@ func main() {
 	config.InitConfig()
 	println("Starting SSH listener")
 	sshlistener.StartListener(9090)
-	//println("Starting downstream handshake")
-	
+	println("Starting downstream handshake")
 	
 	
 	//sshdownstream.DownstreamHandshake()

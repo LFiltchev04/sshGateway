@@ -9,17 +9,14 @@ import(
 	"net/url"
 	//"encoding/json"
 	//"io"
+	ir "sshGateway/internalRouter"
 )
 
-type RequestedResource struct{
-	Uname string
-	EnvName string
-	EnvVersion string
-}
 
-func unameParser(input string) (RequestedResource, error) {
+
+func unameParser(input string) (ir.RequestedResource, error) {
 	println("Parsing uname:", input)
-	var returnable RequestedResource
+	var returnable ir.RequestedResource
 	var tmp []string
 	tmp = strings.Split(input, "/")
 

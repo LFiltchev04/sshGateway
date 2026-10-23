@@ -1,24 +1,33 @@
-package internalrouter
+package addressResolver
 
 import (
-	frontend "sshGateway/sshListener"
+	ir "sshGateway/internalRouter"
+	"log"
 )
 
 type DownstreamResolve interface {
-	Resolve(req frontend.RequestedResource) string
+	Resolve(req ir.RequestedResource) string
+	StartResource() error
 }
 
 type KubernetesResolver struct{}
-func (k KubernetesResolver) Resolve(req frontend.RequestedResource) string {
+func (k KubernetesResolver) Resolve(req ir.RequestedResource) string {
 	//dead certain this will be somehow wrong
 	fqdn := req.EnvName + req.EnvVersion + "." + req.Uname + ".svc.cluster.local"
 	return fqdn
 }
 
+func (k KubernetesResolver) StartResource(req *ir.RequestedResource) error {
+	log.Printf("Starting resource for %s", req.EnvName)
+	
+
+	return nil
+}
+
 type StaticResolver struct{
 	allowed map[string]string
 }
-func (s StaticResolver) Resolve(req frontend.RequestedResource) string {
+func (s StaticResolver) Resolve(req ir.RequestedResource) string {
 	return req.EnvName + "." + req.Uname
 }
 

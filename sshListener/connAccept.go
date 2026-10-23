@@ -51,63 +51,63 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 							continue
 						}
 
-					switch request.Type {
-						case "pty-req":
-							ok, err := downstream.SendRequest("pty-req", request.WantReply, request.Payload)
-							if err != nil {
-								log.Printf("Failed to forward pty-req: %v", err)
-							}
+						switch request.Type {
+							case "pty-req":
+								ok, err := downstream.SendRequest("pty-req", request.WantReply, request.Payload)
+								if err != nil {
+									log.Printf("Failed to forward pty-req: %v", err)
+								}
 							
-							if request.WantReply {
-								request.Reply(ok, request.Payload)
-							}
+								if request.WantReply {
+									request.Reply(ok, request.Payload)
+								}
 							
-						case "shell":
-						
-							request.Reply(true, nil)
-							ok, err := downstream.SendRequest("shell", request.WantReply, nil)
-							if err != nil {
-								log.Printf("Failed to forward shell: %v", err)
-							}
+							case "shell":
 
-							if request.WantReply {
-								request.Reply(ok, nil)
-							}
+								request.Reply(true, nil)
+								ok, err := downstream.SendRequest("shell", request.WantReply, nil)
+								if err != nil {
+									log.Printf("Failed to forward shell: %v", err)
+								}
+
+								if request.WantReply {
+									request.Reply(ok, nil)
+								}
 					
-						case "window-change":
-							ok, err := downstream.SendRequest("window-change", request.WantReply, request.Payload)
-							if err != nil {
-								log.Printf("Failed to forward window change: %v", err)
-							}
+							case "window-change":
+								ok, err := downstream.SendRequest("window-change", request.WantReply, request.Payload)
+								if err != nil {
+									log.Printf("Failed to forward window change: %v", err)
+								}
 
-							if request.WantReply {
-								request.Reply(ok, nil)
-							}
+								if request.WantReply {
+									request.Reply(ok, nil)
+								}
 
 
 
-						case "exec":
-							ok, err := downstream.SendRequest("exec", request.WantReply, request.Payload)
-							if err != nil {
-								log.Printf("Failed to forward exec: %v", err)
-							}
+							case "exec":
+								ok, err := downstream.SendRequest("exec", request.WantReply, request.Payload)
+								if err != nil {
+									log.Printf("Failed to forward exec: %v", err)
+								}
 
-							if request.WantReply {
-								request.Reply(ok, nil)
-							}
+								if request.WantReply {
+									request.Reply(ok, nil)
+								}
 
-						default:
-							resp, err := downstream.SendRequest(request.Type, request.WantReply, nil)
-							if err != nil {
-								log.Printf("Failed to forward request: %v", err)
-							}
+							default:
+								resp, err := downstream.SendRequest(request.Type, request.WantReply, nil)
+								if err != nil {
+									log.Printf("Failed to forward request: %v", err)
+								}
 						
-							if request.WantReply == true{
-								request.Reply(resp, nil)
-							}
+								if request.WantReply == true{
+									request.Reply(resp, nil)
+								}
 							
-						}
-				}
+							}
+					}
 			}(channel, channelRequests)
 		}
 	}
