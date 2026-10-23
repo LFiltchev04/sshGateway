@@ -39,7 +39,7 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 					//channel.Write([]byte("\n\n===>          THIS IS BEING FORWARDED         <===\n\n"))
 
 					sessionReady := make(chan *ssh.Session, 1)
-					go d.DownstreamHandshake(channel.Stderr(), channel, sessionReady)
+					go d.DownstreamHandshake(channel.Stderr(), channel, sessionReady, )
 					
 					downstream := <-sessionReady
 					if downstream == nil {

@@ -11,11 +11,12 @@ import (
 	//"os"
 
 	r "sshGateway/internalRouter"
+	rsl "sshGateway/internalRouter/adressResolver"
 )
 
 
 //is not idempotent, has to be ran once 
-func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, ready chan<- *ssh.Session) { 
+func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req r.RequestedResource,ready chan<- *ssh.Session) { 
 	config := &ssh.ClientConfig{
 		User: "llf",
 		Auth: []ssh.AuthMethod{
@@ -29,9 +30,8 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, ready chan<- *s
 
 	//init happens here, add later
 
-
-
-
+	
+	req.Resolver.Resolve(req)	
 
 
 

@@ -1,22 +1,42 @@
 package addressResolver
 
 import (
-	ir "sshGateway/internalRouter"
 	"log"
 	"time"
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/clientcmd"
+	ir "sshGateway/internalRouter"
 
 )
 
+
+type RequestedResource struct{
+	Uname string
+	EnvName string
+	EnvVersion string
+	Resolver DownstreamResolve
+}
+
+
+type ConnEntry struct {
+	WantedRes RequestedResource
+	backendUp bool
+	backendAddr string
+}
+
+type ClientCtx struct { // bool persistently kills an upstream session
+	StatusChan *chan bool
+}
+
+
+var ActiveConns map[string]ConnEntry
+
 type DownstreamResolve interface {
-	Resolve(req ir.RequestedResource) string
+	Resolve(req RequestedResource) string
 	StartResource() error
 }
 
@@ -26,10 +46,12 @@ type KubernetesResolver struct{
 	informer cache.SharedIndexInformer
 
 	podDefinition corev1.Pod
+
+	UnblockOp ClientCtx 
 }
 
 //returns bool if it can resolve 
-func (k KubernetesResolver) Resolve(req ir.RequestedResource) bool{
+func (k KubernetesResolver) Resolve(req RequestedResource) bool{
 	
 	
 	//fqdn := req.EnvName + req.EnvVersion + "." + req.Uname + ".svc.cluster.local"
@@ -96,11 +118,18 @@ func (k KubernetesResolver) Resolve(req ir.RequestedResource) bool{
 
 	k.podDefinition = pod
 
+	unblockChan := make(chan bool)
+	k.UnblockOp = ClientCtx{
+		StatusChan: &unblockChan,
+	}
+
+	ir.GlobalUnblock.GlobalDemuxMap[podNameStr] = k.UnblockOp //allows for the client to watch for unblock operations
+
 	return true //default exist
 }
 
 //just starts a kubernetes pod, watching is handled separately
-func (k KubernetesResolver) StartResource(req *ir.RequestedResource) error {
+func (k *KubernetesResolver) StartResource(req *ir.RequestedResource) error {
 	log.Printf("Starting resource for %s", req.EnvName)
 	
 	_, err := k.client.CoreV1().Pods(req.Uname).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
@@ -108,6 +137,14 @@ func (k KubernetesResolver) StartResource(req *ir.RequestedResource) error {
 		return err
 	}
 
+	//has to wait to be signalled by the informer cache to send something on the unblock channel
+
+	for{
+		log.Print("waiting")
+		<-*k.UnblockOp.StatusChan
+	}
+
+	log.Println("waited")
 	return nil
 }
 
