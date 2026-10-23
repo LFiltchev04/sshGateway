@@ -15,30 +15,32 @@ import (
 )
 
 
+//context struct for access to the shared informer cache
+type KubContext struct {
+	ClientSet *kubernetes.Clientset
+	Factory informers.SharedInformerFactory
+}
 
-
-
-func  InformerCache(){
-
+func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 	
-	config, err := clientcmd.BuildConfigFromFlags("", clientcmd.RecommendedHomeFile)
+	
+	config, err := clientcmd.BuildConfigFromFlags(url, kubeconfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	clientset, err := kubernetes.NewForConfig(config)
+	kc.ClientSet, err = kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("Failed to create clientset: %v", err)
 	}
 
-	factory := informers.NewSharedInformerFactory(clientset, 30*time.Minute)
 
+	kc.Factory = informers.NewSharedInformerFactory(kc.ClientSet, 15*time.Minute)
 
-	podInformer := factory.Core().V1().Pods()
+	
+	podInformer := kc.Factory.Core().V1().Pods()
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		
-		
-		
+			
 		
 		AddFunc: func(obj interface{}){
 			

@@ -97,6 +97,12 @@ func AuthCb(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
 		return nil, errors.New("authentication failed")
 	}
 
+	uDataMap := make(map[any]any)
+	uDataMap["user"] = requestedResource.Uname
+
+	perms := ssh.Permissions{}
+	perms.ExtraData = uDataMap	
+
 	// dont get what perms are for, guess when i run it it will just blow up on me
-	return &ssh.Permissions{}, nil
+	return &perms, nil
 }
