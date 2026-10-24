@@ -60,6 +60,7 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 				
 				entry, exists := re.GlobalUnblock.GlobalDemuxMap[newPod.Name]
 				if exists {
+					println("exists")
 					*entry.StatusChan <- true
 				}else{
 					log.Println("No entry for pod")

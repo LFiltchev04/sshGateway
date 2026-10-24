@@ -3,3 +3,4 @@ go.sum
 server_id*
 .vscode
 main
+__debug*

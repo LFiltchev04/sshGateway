@@ -75,19 +75,19 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 	}
 
 	ctx := context.TODO()
-	pv, err := k.client.CoreV1().PersistentVolumeClaims("ceph").Get(ctx, req.EnvName, metav1.GetOptions{})
+	pvc, err := k.client.CoreV1().PersistentVolumeClaims(req.EnvName).Get(ctx, req.EnvName, metav1.GetOptions{})
 
 	if err != nil {
 		log.Print("couldnt find the PV for ", req.EnvName)
 		return false
 	}
 
-	if pv == nil {
+	if pvc == nil {
 		log.Printf("The PV pointer was null for %s", req.EnvName)
 		return false
 	}
 
-	log.Printf("PV name: %s", pv.Name)
+	log.Printf("PV name: %s", pvc.Name)
 
 	podNameStr := req.EnvName + "-" + req.EnvVersion
 
