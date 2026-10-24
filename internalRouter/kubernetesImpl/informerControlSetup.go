@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 
-	r "sshGateway/internalRouter"
+	re "sshGateway/internalRouter/adressResolver"
 )
 
 
@@ -58,7 +58,7 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 
 
 				
-				entry, exists := r.GlobalUnblock.GlobalDemuxMap[newPod.Name]
+				entry, exists := re.GlobalUnblock.GlobalDemuxMap[newPod.Name]
 				if exists {
 					*entry.StatusChan <- true
 				}else{
@@ -80,8 +80,8 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 		DeleteFunc: func(obj interface{}){
 			pod := obj.(*corev1.Pod)
 
-			if _, exists := r.GlobalUnblock.GlobalDemuxMap[pod.Name]; exists {
-				*r.GlobalUnblock.GlobalDemuxMap[pod.Name].StatusChan <- false
+			if _, exists := re.GlobalUnblock.GlobalDemuxMap[pod.Name]; exists {
+				*re.GlobalUnblock.GlobalDemuxMap[pod.Name].StatusChan <- false
 			}
 		},
 	})

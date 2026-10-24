@@ -9,11 +9,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	ir "sshGateway/internalRouter"
 
 )
 
 
+
+type UnblockWatcher struct{
+	clientset *kubernetes.Clientset
+	GlobalDemuxMap map[string]ClientCtx
+}
+
+var GlobalUnblock UnblockWatcher
+
+//the downstream one 
 type RequestedResource struct{
 	Uname string
 	EnvName string
@@ -36,8 +44,8 @@ type ClientCtx struct { // bool persistently kills an upstream session
 var ActiveConns map[string]ConnEntry
 
 type DownstreamResolve interface {
-	Resolve(req RequestedResource) string
-	StartResource() error
+	Resolve(req RequestedResource) bool
+	StartResource(req RequestedResource) error
 }
 
 type KubernetesResolver struct{
@@ -51,7 +59,7 @@ type KubernetesResolver struct{
 }
 
 //returns bool if it can resolve 
-func (k KubernetesResolver) Resolve(req RequestedResource) bool{
+func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 	
 	
 	//fqdn := req.EnvName + req.EnvVersion + "." + req.Uname + ".svc.cluster.local"
@@ -123,13 +131,13 @@ func (k KubernetesResolver) Resolve(req RequestedResource) bool{
 		StatusChan: &unblockChan,
 	}
 
-	ir.GlobalUnblock.GlobalDemuxMap[podNameStr] = k.UnblockOp //allows for the client to watch for unblock operations
+	GlobalUnblock.GlobalDemuxMap[podNameStr] = k.UnblockOp //allows for the client to watch for unblock operations
 
 	return true //default exist
 }
 
 //just starts a kubernetes pod, watching is handled separately
-func (k *KubernetesResolver) StartResource(req *ir.RequestedResource) error {
+func (k *KubernetesResolver) StartResource(req RequestedResource) error {
 	log.Printf("Starting resource for %s", req.EnvName)
 	
 	_, err := k.client.CoreV1().Pods(req.Uname).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
@@ -151,7 +159,7 @@ func (k *KubernetesResolver) StartResource(req *ir.RequestedResource) error {
 type StaticResolver struct{
 	allowed map[string]string
 }
-func (s StaticResolver) Resolve(req ir.RequestedResource) string {
+func (s StaticResolver) Resolve(req RequestedResource) string {
 	return req.EnvName + "." + req.Uname
 }
 

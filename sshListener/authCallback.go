@@ -9,7 +9,7 @@ import(
 	"net/url"
 	//"encoding/json"
 	//"io"
-	ir "sshGateway/internalRouter"
+	ir "sshGateway/internalRouter/adressResolver"
 )
 
 
@@ -33,6 +33,7 @@ func unameParser(input string) (ir.RequestedResource, error) {
 		log.Default().Println("Invalid input string in auth cb")
 		return returnable, errors.New("invalid input format")
 	}
+
 	
 	return returnable, nil
 }
@@ -98,7 +99,7 @@ func AuthCb(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
 	}
 
 	uDataMap := make(map[any]any)
-	uDataMap["user"] = requestedResource.Uname
+	uDataMap["user"] = requestedResource
 
 	perms := ssh.Permissions{}
 	perms.ExtraData = uDataMap	

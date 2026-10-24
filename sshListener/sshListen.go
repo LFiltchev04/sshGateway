@@ -12,10 +12,13 @@ import (
 	"golang.org/x/crypto/ssh"
 
 	"sshGateway/config"
+	r "sshGateway/internalRouter/adressResolver"
+	kubImpl "sshGateway/internalRouter/kubernetesImpl"
+
 )
 
 
-func StartListener(port int) {
+func StartListener(port int, kc *kubImpl.KubContext) {
 	
 	keyContent, err := config.Gconfig.GetSSHKey()
 	if err != nil {
@@ -54,8 +57,13 @@ func StartListener(port int) {
 				return
 			}
 
+			reqRes := sshConn.Permissions.ExtraData["user"]
+			val, ok := reqRes.(r.RequestedResource)
 			
-			HandleInputChannel(sshConn, reqs, chans)
+			if !ok {
+				return
+			}
+			HandleInputChannel(sshConn, reqs, chans, val)
 
 			
 

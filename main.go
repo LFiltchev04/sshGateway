@@ -1,7 +1,6 @@
 package main
 
 import (
-	"sshGateway/internalRouter/adressResolver"
 	"sshGateway/config"
 	sshlistener "sshGateway/sshListener"
 	//sshdownstream "sshGateway/downstream"
@@ -13,16 +12,15 @@ func main() {
 	println("Starting SSH listener")
 	
 	
-	resolverKub := addressResolver.KubernetesResolver{}
 	kc := &kubImpl.KubContext{}
 
 	//have to set proper info here
-	kc.InformerCache("kubeconfig", "")
+	go kc.InformerCache("/home/llf/.kube/config", "")
 	//resolverStatic := addressResolver.StaticResolver{}
 
 	
 
-	sshlistener.StartListener(9090)
+	sshlistener.StartListener(9090, kc)
 	println("Starting downstream handshake")
 	
 	//sshdownstream.DownstreamHandshake()
