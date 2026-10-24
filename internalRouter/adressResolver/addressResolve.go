@@ -1,9 +1,11 @@
 package addressResolver
 
 import (
+	//"io"
 	"log"
+	"time"
 	"context"
-
+	"fmt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -160,14 +162,19 @@ func (k *KubernetesResolver) StartResource(req RequestedResource) error {
 
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 
-	for{
-		log.Print("waiting")
-		<-*k.UnblockOp.StatusChan
-		println("unblocked")
-	}
+	
+	tmrC := time.NewTimer(15 * time.Second)
+	select{
+		case <-*k.UnblockOp.StatusChan:
+			println("unblocked")
 
-	log.Println("waited")
-	return nil
+			tmrC.Stop()
+			return nil
+	
+		case <-tmrC.C:
+			println("timeout")
+			return fmt.Errorf("timeout")
+		}
 }
 
 type StaticResolver struct{

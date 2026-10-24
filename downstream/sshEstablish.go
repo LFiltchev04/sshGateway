@@ -39,11 +39,12 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 
 	err := req.Resolver.StartResource(req)
 	if err != nil {
-		log.Print("start failed")
+		log.Printf("start failed with err: %s", err.Error())
+		ready <- nil
 		return
 	}
 
-	
+
 	//this is going to be the resolution mechanism 
 	//it talks to downstreams ervices and it either times out or allows it to proceed while handling the timeout
 	for{
