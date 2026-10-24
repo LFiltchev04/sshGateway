@@ -44,6 +44,8 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 					
 					downstream := <-sessionReady
 					if downstream == nil {
+						log.Printf("Downstream failed")
+						conn.Close()
 						return
 					}
 

@@ -19,6 +19,10 @@ import (
 
 
 func StartListener(port int, kc *kubImpl.KubContext) {
+	if kc == nil || kc.ClientSet == nil {
+		log.Fatal("Kubernetes client is not initialized")
+	}
+	GlobalResolver = *r.NewKubernetesResolver(kc.ClientSet)
 	
 	keyContent, err := config.Gconfig.GetSSHKey()
 	if err != nil {
@@ -63,6 +67,8 @@ func StartListener(port int, kc *kubImpl.KubContext) {
 			if !ok {
 				return
 			}
+
+			val.Resolver = &GlobalResolver
 			HandleInputChannel(sshConn, reqs, chans, val)
 
 			

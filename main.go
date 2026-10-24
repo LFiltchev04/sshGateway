@@ -15,7 +15,7 @@ func main() {
 	kc := &kubImpl.KubContext{}
 
 	//have to set proper info here
-	go kc.InformerCache("/home/llf/.kube/config", "")
+	kc.InformerCache("/home/llf/.kube/config", "")
 	//resolverStatic := addressResolver.StaticResolver{}
 
 	

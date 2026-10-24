@@ -39,7 +39,7 @@ func unameParser(input string) (ir.RequestedResource, error) {
 }
 
 
-
+var GlobalResolver ir.KubernetesResolver
 
 func KeycloacDirectAuth(username, password string) (bool, error) {
 
@@ -98,8 +98,11 @@ func AuthCb(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
 		return nil, errors.New("authentication failed")
 	}
 
+	requestedResource.Resolver = &GlobalResolver
+
 	uDataMap := make(map[any]any)
 	uDataMap["user"] = requestedResource
+
 
 	perms := ssh.Permissions{}
 	perms.ExtraData = uDataMap	

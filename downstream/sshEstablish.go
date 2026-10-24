@@ -30,17 +30,27 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 	//init happens here, add later
 
 	
-	req.Resolver.Resolve(req)	
+	//failed to resolve at a basic level, drops connection
+	if !req.Resolver.Resolve(req){
+		writer.Write([]byte("\n\n         resolve failed\n\n"))
+		ready <- nil
+		return
+	}	
 
+	err := req.Resolver.StartResource(req)
+	if err != nil {
+		log.Print("start failed")
+		return
+	}
 
-
-
+	
 	//this is going to be the resolution mechanism 
 	//it talks to downstreams ervices and it either times out or allows it to proceed while handling the timeout
 	for{
 		go func(resolutionChannel *chan bool) {
 			// send response to timer 
-			time.NewTimer(15 * time.Second)
+			time.Sleep(15 * time.Second)
+			println("timer ended ")
 			if resolutionChannel != nil {
 				*resolutionChannel <- true
 			}
@@ -50,7 +60,7 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 
 		// registers the resolution channel with the k8s controller
 
-		
+
 
 		// waits on resolution
 		result := <-*ctx.StatusChan

@@ -2,7 +2,6 @@ package addressResolver
 
 import (
 	"log"
-	"time"
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
@@ -58,14 +57,23 @@ type KubernetesResolver struct{
 	UnblockOp ClientCtx 
 }
 
+func NewKubernetesResolver(client kubernetes.Interface) *KubernetesResolver {
+	return &KubernetesResolver{client: client}
+}
+
 //returns bool if it can resolve 
 func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 	
 	
 	//fqdn := req.EnvName + req.EnvVersion + "." + req.Uname + ".svc.cluster.local"
 
+	if k == nil || k.client == nil {
+		log.Print("Kubernetes resolver has no client")
+		return false
+	}
+
 	ctx := context.TODO()
-	pv, err := k.client.CoreV1().PersistentVolumes().Get(ctx, req.EnvName, metav1.GetOptions{})
+	pv, err := k.client.CoreV1().PersistentVolumeClaims("ceph").Get(ctx, req.EnvName, metav1.GetOptions{})
 
 	if err != nil {
 		log.Print("couldnt find the PV for ", req.EnvName)
@@ -79,7 +87,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 
 	log.Printf("PV name: %s", pv.Name)
 
-	podNameStr := req.EnvName + "-" + req.EnvVersion + "-" + string(time.Now().Unix())
+	podNameStr := req.EnvName + "-" + req.EnvVersion
 
 	imageName := "http://endpoint.local:8080/" + req.EnvName + ":" + req.EnvVersion
 
@@ -131,6 +139,11 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 		StatusChan: &unblockChan,
 	}
 
+	if GlobalUnblock.GlobalDemuxMap == nil {
+		GlobalUnblock.GlobalDemuxMap = make(map[string]ClientCtx)
+	}
+
+	println("adding to demux")
 	GlobalUnblock.GlobalDemuxMap[podNameStr] = k.UnblockOp //allows for the client to watch for unblock operations
 
 	return true //default exist
@@ -150,6 +163,7 @@ func (k *KubernetesResolver) StartResource(req RequestedResource) error {
 	for{
 		log.Print("waiting")
 		<-*k.UnblockOp.StatusChan
+		println("unblocked")
 	}
 
 	log.Println("waited")
