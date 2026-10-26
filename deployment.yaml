@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
       - name: sshgateway
-        image: docker.io/llf2004/sshgateway:v6
+        image: docker.io/llf2004/ssh-gate:v0
         ports:
         - containerPort: 9090
