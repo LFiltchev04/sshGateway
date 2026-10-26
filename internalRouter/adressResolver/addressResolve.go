@@ -117,8 +117,8 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 
 	podNameStr := req.EnvName + "-" + req.EnvVersion
 
-
-	imageName := "https://dockerhub.io/llf2004/" + req.EnvName + ":" + req.EnvVersion
+	svcName := "svc-" + req.EnvName
+	imageName := "docker.io/llf2004/" + req.EnvName + ":" + req.EnvVersion
 
 	log.Printf("Pod name: %s", podNameStr)
 
@@ -135,29 +135,30 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 		},
 
 		Spec: corev1.PodSpec{
+			Hostname: podNameStr,
+			Subdomain: svcName,
 			Containers: []corev1.Container{
 				{
 					Name: "workspace",
 					Image: imageName,
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name: req.EnvName,
-							MountPath: "/mnt", //stub test, nothing more, remove for the proper link to the backend
-						},
-					},
+					//VolumeMounts: []corev1.VolumeMount{
+					//	{
+					//		Name: req.EnvName,
+					//		MountPath: "/mnt", //stub test, nothing more, remove for the proper link to the backend
+					//	},
+					//},
 				},
 
 			},
-			Volumes: []corev1.Volume{
-				{
-					Name: req.EnvName,
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: req.EnvName, // has to match with the env name
-						},
-					},
-				},
-			},
+			//Volumes: []corev1.Volume{
+			//	{
+			//		Name: req.EnvName,
+			//		VolumeSource: corev1.VolumeSource{
+			//			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+			//				ClaimName: req.EnvName, // has to match with the env name
+			//		},
+			//	},
+			//},
 		},
 	}
 
@@ -183,9 +184,11 @@ func (k *KubernetesResolver) StartResource(req RequestedResource) (string,error)
 		return "", err
 	}
 
-	fqdn := req.EnvName+ "-" + req.EnvVersion + "." + req.EnvName + ".svc.cluster.local"
+	svcName := "svc-" + req.EnvName
+	fqdn := req.EnvName+ "-" + req.EnvVersion + "." + svcName +"." + req.EnvName + ".svc.cluster.local"
 
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
+
 
 	
 	tmrC := time.NewTimer(15 * time.Second)

@@ -4,6 +4,8 @@ import (
 	//"io"
 	"io"
 	"log"
+	"time"
+
 
 	"golang.org/x/crypto/ssh"
 	//"net"
@@ -13,7 +15,52 @@ import (
 )
 
 
-//is not idempotent, has to be ran once 
+
+//wrapper type of io read/write ops that tracks if the connection is idle
+type idleTimer struct {
+	stdin io.Reader //upstream reader 
+	stdout io.Writer //upstream writer
+	stderr io.Writer //upstream writer
+
+
+	resetChan chan struct{}
+}
+
+
+
+func (i *idleTimer) resetableTimer(dwnStream *ssh.Session) {
+
+	timer := time.NewTimer(time.Minute*7)
+	for{
+		select{
+			case <-i.resetChan:
+				timer.Reset(time.Minute*7)
+		
+			case <-timer.C:
+				log.Println("idle timeout")
+
+				dwnStream.Close()
+				return
+		}
+	}
+}
+
+
+
+func (i *idleTimer) Read(p []byte) (int, error) {
+	res, err := i.stdin.Read(p)
+	i.resetChan <- struct{}{}
+	return res, err
+}
+
+func (i *idleTimer) Write(p []byte) (int, error) {
+	res, err := i.stdout.Write(p)
+	i.resetChan <- struct{}{}
+	return res, err
+}
+
+
+//is not idempotent, has to be ran once
 func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.RequestedResource,ready chan<- *ssh.Session) { 
 	config := &ssh.ClientConfig{
 		User: "root",
@@ -62,9 +109,18 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 		return
 	}
 
-	session.Stdin = reader
-	session.Stdout = writer
-	session.Stderr = writer
+
+	idlTmr := &idleTimer{
+		stdin: reader,
+		stdout: writer,
+		stderr: writer,
+		resetChan: make(chan struct{}),
+	}
+	go idlTmr.resetableTimer(session)
+
+	session.Stdin = idlTmr.stdin
+	session.Stdout = idlTmr.stdout
+	session.Stderr = idlTmr.stderr
 
 	if err := session.RequestPty("xterm-256color", 24, 80, ssh.TerminalModes{}); err != nil {
 		log.Printf("Failed to request downstream PTY: %v", err)

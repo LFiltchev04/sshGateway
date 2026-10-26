@@ -21,7 +21,7 @@ type KubContext struct {
 	Factory informers.SharedInformerFactory
 }
 
-func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
+func (kc *KubContext)InformerCache(kubeconfig string, url string, unblockChan chan<- bool){
 	
 	
 	config, err := clientcmd.BuildConfigFromFlags(url, kubeconfig)
@@ -37,8 +37,8 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 
 	kc.Factory = informers.NewSharedInformerFactory(kc.ClientSet, 15*time.Minute)
 
-	
 	podInformer := kc.Factory.Core().V1().Pods()
+
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			
 		
@@ -60,7 +60,7 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 				
 				entry, exists := re.GlobalUnblock.Get(newPod.Name)
 				if exists {
-					println("exists")
+					println("exists for pod:", newPod.Name)
 					*entry.StatusChan <- true
 				}else{
 					log.Println("No entry for pod")
@@ -83,5 +83,13 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 			}
 		},
 	})
+
+	stopCh := make(chan struct{})
+	kc.Factory.Start(stopCh)
+	if !cache.WaitForCacheSync(stopCh, podInformer.Informer().HasSynced) {
+		unblockChan <- false
+		return
+	}
+	unblockChan <- true
 
 }
