@@ -2,5 +2,8 @@ go.mod
 go.sum
 server_id*
 .vscode
-main
+main*
 __debug*
+kubeconfig
+*.dockerfile
+telepresence*

@@ -4,7 +4,6 @@ import (
 	//"io"
 	"io"
 	"log"
-	"time"
 
 	"golang.org/x/crypto/ssh"
 	//"net"
@@ -17,15 +16,14 @@ import (
 //is not idempotent, has to be ran once 
 func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.RequestedResource,ready chan<- *ssh.Session) { 
 	config := &ssh.ClientConfig{
-		User: "llf",
+		User: "root",
 		Auth: []ssh.AuthMethod{
-			ssh.Password("alabala1"),
+			ssh.Password("aaa"),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 
-	var ctx rsl.ClientCtx
 
 	//init happens here, add later
 
@@ -37,7 +35,7 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 		return
 	}	
 
-	err := req.Resolver.StartResource(req)
+	connStr, err := req.Resolver.StartResource(req)
 	if err != nil {
 		log.Printf("start failed with err: %s", err.Error())
 		ready <- nil
@@ -47,35 +45,9 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 
 	//this is going to be the resolution mechanism 
 	//it talks to downstreams ervices and it either times out or allows it to proceed while handling the timeout
-	for{
-		go func(resolutionChannel *chan bool) {
-			// send response to timer 
-			time.Sleep(15 * time.Second)
-			println("timer ended ")
-			if resolutionChannel != nil {
-				*resolutionChannel <- true
-			}
+	
 
-			//is ignored if there is no channel because it has completed, just exit quietly
-		}(ctx.StatusChan)
-
-		// registers the resolution channel with the k8s controller
-
-
-
-		// waits on resolution
-		result := <-*ctx.StatusChan
-		if result {
-			break //permits to continue downwards to ssh
-		}else{ //it has to kill the downstream channel and print a message
-			log.Printf("Resolution failed")
-
-			ready <- nil
-			return
-		}
-	}
-
-	client, err := ssh.Dial("tcp", "192.168.1.40:22", config)
+	client, err := ssh.Dial("tcp", connStr+":22", config)
 	if err != nil {
 		log.Printf("Failed to dial SSH server: %v", err)
 		ready <- nil

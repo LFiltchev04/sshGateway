@@ -73,7 +73,7 @@ type ClientCtx struct { // bool persistently kills an upstream session
 
 type DownstreamResolve interface {
 	Resolve(req RequestedResource) bool
-	StartResource(req RequestedResource) error
+	StartResource(req RequestedResource) (string,error)
 }
 
 type KubernetesResolver struct{
@@ -94,7 +94,6 @@ func NewKubernetesResolver(client kubernetes.Interface) *KubernetesResolver {
 func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 	
 	
-	//fqdn := req.EnvName + req.EnvVersion + "." + req.Uname + ".svc.cluster.local"
 
 	if k == nil || k.client == nil {
 		log.Print("Kubernetes resolver has no client")
@@ -105,12 +104,12 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 	pvc, err := k.client.CoreV1().PersistentVolumeClaims(req.EnvName).Get(ctx, req.EnvName, metav1.GetOptions{})
 
 	if err != nil {
-		log.Print("couldnt find the PV for ", req.EnvName)
+		log.Printf("couldnt find the PV for %s with err %v", req.EnvName, err.Error())
 		return false
 	}
 
 	if pvc == nil {
-		log.Printf("The PV pointer was null for %s", req.EnvName)
+		log.Printf("The PVC pointer was null for %s", req.EnvName)
 		return false
 	}
 
@@ -118,14 +117,15 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 
 	podNameStr := req.EnvName + "-" + req.EnvVersion
 
-	imageName := "http://endpoint.local:8080/" + req.EnvName + ":" + req.EnvVersion
+
+	imageName := "https://dockerhub.io/llf2004/" + req.EnvName + ":" + req.EnvVersion
 
 	log.Printf("Pod name: %s", podNameStr)
 
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podNameStr,
-			Namespace: req.Uname,
+			Namespace: req.EnvName,
 			Labels: map[string]string{
 				"app": "workspace",
 				"env": req.EnvName,
@@ -175,13 +175,15 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 }
 
 //just starts a kubernetes pod, watching is handled separately
-func (k *KubernetesResolver) StartResource(req RequestedResource) error {
+func (k *KubernetesResolver) StartResource(req RequestedResource) (string,error) {
 	log.Printf("Starting resource for %s", req.EnvName)
 	
-	_, err := k.client.CoreV1().Pods(req.Uname).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
+	_, err := k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return "", err
 	}
+
+	fqdn := req.EnvName+ "-" + req.EnvVersion + "." + req.EnvName + ".svc.cluster.local"
 
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 
@@ -191,12 +193,14 @@ func (k *KubernetesResolver) StartResource(req RequestedResource) error {
 		case <-*k.UnblockOp.StatusChan:
 			println("unblocked")
 
+			GlobalUnblock.Delete(k.podDefinition.Name)
 			tmrC.Stop()
-			return nil
+			return fqdn, nil
 	
 		case <-tmrC.C:
 			println("timeout")
-			return fmt.Errorf("timeout")
+			GlobalUnblock.Delete(k.podDefinition.Name)
+			return "", fmt.Errorf("timeout")
 		}
 }
 
