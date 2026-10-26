@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sshgateway-deployment
+  namespace: default
+  labels:
+    app: sshGateway  
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ssh-gate
+  template:
+    metadata:
+      labels:
+        app: ssh-gate 
+    spec:
+      containers:
+      - name: sshgateway
+        image: docker.io/llf2004/sshgateway:v6
+        ports:
+        - containerPort: 9090

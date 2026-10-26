@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 
@@ -179,9 +179,15 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 func (k *KubernetesResolver) StartResource(req RequestedResource) (string,error) {
 	log.Printf("Starting resource for %s", req.EnvName)
 	
+	var shouldWait bool
 	_, err := k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
 	if err != nil {
-		return "", err
+
+		if apierrors.IsAlreadyExists(err) {
+			shouldWait = false
+		}else{
+			return "", err
+		}
 	}
 
 	svcName := "svc-" + req.EnvName
@@ -190,21 +196,25 @@ func (k *KubernetesResolver) StartResource(req RequestedResource) (string,error)
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 
 
-	
-	tmrC := time.NewTimer(15 * time.Second)
-	select{
-		case <-*k.UnblockOp.StatusChan:
+	if shouldWait{
+		tmrC := time.NewTimer(15 * time.Second)
+		select{
+			case <-*k.UnblockOp.StatusChan:
 			println("unblocked")
 
 			GlobalUnblock.Delete(k.podDefinition.Name)
 			tmrC.Stop()
 			return fqdn, nil
 	
-		case <-tmrC.C:
+			case <-tmrC.C:
 			println("timeout")
 			GlobalUnblock.Delete(k.podDefinition.Name)
 			return "", fmt.Errorf("timeout")
 		}
+	}
+
+	
+	return fqdn, nil
 }
 
 type StaticResolver struct{
