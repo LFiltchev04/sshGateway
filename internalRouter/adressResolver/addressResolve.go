@@ -3,6 +3,7 @@ package addressResolver
 import (
 	//"io"
 	"log"
+	"sync"
 	"time"
 	"context"
 	"fmt"
@@ -17,10 +18,33 @@ import (
 
 type UnblockWatcher struct{
 	clientset *kubernetes.Clientset
-	GlobalDemuxMap map[string]ClientCtx
+	mu             sync.RWMutex
+	globalDemuxMap map[string]ClientCtx
 }
 
 var GlobalUnblock UnblockWatcher
+
+func (u *UnblockWatcher) Set(key string, ctx ClientCtx) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.globalDemuxMap == nil {
+		u.globalDemuxMap = make(map[string]ClientCtx)
+	}
+	u.globalDemuxMap[key] = ctx
+}
+
+func (u *UnblockWatcher) Get(key string) (ClientCtx, bool) {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+	ctx, ok := u.globalDemuxMap[key]
+	return ctx, ok
+}
+
+func (u *UnblockWatcher) Delete(key string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	delete(u.globalDemuxMap, key)
+}
 
 //the downstream one 
 type RequestedResource struct{
@@ -42,7 +66,10 @@ type ClientCtx struct { // bool persistently kills an upstream session
 }
 
 
-var ActiveConns map[string]ConnEntry
+
+
+
+
 
 type DownstreamResolve interface {
 	Resolve(req RequestedResource) bool
@@ -115,7 +142,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name: req.EnvName,
-							MountPath: "/",
+							MountPath: "/mnt", //stub test, nothing more, remove for the proper link to the backend
 						},
 					},
 				},
@@ -126,7 +153,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 					Name: req.EnvName,
 					VolumeSource: corev1.VolumeSource{
 						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: req.EnvName, // has to match with the username
+							ClaimName: req.EnvName, // has to match with the env name
 						},
 					},
 				},
@@ -141,12 +168,8 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 		StatusChan: &unblockChan,
 	}
 
-	if GlobalUnblock.GlobalDemuxMap == nil {
-		GlobalUnblock.GlobalDemuxMap = make(map[string]ClientCtx)
-	}
-
 	println("adding to demux")
-	GlobalUnblock.GlobalDemuxMap[podNameStr] = k.UnblockOp //allows for the client to watch for unblock operations
+	GlobalUnblock.Set(podNameStr, k.UnblockOp) //allows for the client to watch for unblock operations
 
 	return true //default exist
 }

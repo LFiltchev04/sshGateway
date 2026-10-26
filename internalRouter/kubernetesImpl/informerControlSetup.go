@@ -50,29 +50,26 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 
 
 		UpdateFunc: func(oldObj, newObj interface{}){ //this thing has to notify the pod on restart
-			oldPod := oldObj.(*corev1.Pod)
+			//oldPod := oldObj.(*corev1.Pod)
         	newPod := newObj.(*corev1.Pod)
 
-			if oldPod.Status.Phase == "Pending" && newPod.Status.Phase == "Running" { //unblocks the downstream through the golang demuxer
+			if newPod.Status.Phase == "Running" { //unblocks the downstream through the golang demuxer
 				log.Println("Pod started running")
 
 
 				
-				entry, exists := re.GlobalUnblock.GlobalDemuxMap[newPod.Name]
+				entry, exists := re.GlobalUnblock.Get(newPod.Name)
 				if exists {
 					println("exists")
 					*entry.StatusChan <- true
 				}else{
 					log.Println("No entry for pod")
-					*entry.StatusChan <- false
 				}
 
 
 			}
 
-			if oldPod.Status.Phase == newPod.Status.Phase {
-				log.Println("Pod status unchanged, is an error")
-			}
+			
 		},
 		
 		
@@ -81,8 +78,8 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string)(){
 		DeleteFunc: func(obj interface{}){
 			pod := obj.(*corev1.Pod)
 
-			if _, exists := re.GlobalUnblock.GlobalDemuxMap[pod.Name]; exists {
-				*re.GlobalUnblock.GlobalDemuxMap[pod.Name].StatusChan <- false
+			if entry, exists := re.GlobalUnblock.Get(pod.Name); exists {
+				*entry.StatusChan <- false
 			}
 		},
 	})
