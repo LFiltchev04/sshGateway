@@ -114,13 +114,7 @@ func (k *K8sResolvable) WatchStart(req RequestedResource) (ResolvableEntry,error
 
 func (k *K8sResolvable) ResourceOK() (bool, error) {
 	
-	
-	svcName := "svc-" + k.req.EnvName
-	fqdn := k.req.EnvName+ "-" + k.req.EnvVersion + "." + svcName +"." + k.req.EnvName + ".svc.cluster.local"
-
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
-
-
 	
 		tmrC := time.NewTimer(15 * time.Second)
 		select{
@@ -267,24 +261,21 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 //just starts a kubernetes pod, watching is handled separately
 func (k *KubernetesResolver) StartResource(req ResolvableEntry) (string,error) {
 	
-	svcName := "svc-" + req.EnvName
-	fqdn := req.EnvName+ "-" + req.EnvVersion + "." + svcName +"." + req.EnvName + ".svc.cluster.local"
-
+	svcName := "svc-" + req.GetResourceReq().EnvName
+	fqdn := req.GetResourceReq().EnvName+ "-" + req.GetResourceReq().EnvVersion + "." + svcName + ".svc.cluster.local"
+	
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 
-	stat, err := req.ResourceOK()
+	state, err := req.ResourceOK()
 	if err != nil {
 		return "", err
 	}
 	
-	if stat{
+	if state{
 		return fqdn, nil
 	}else{
 		return "", fmt.Errorf("Resource watch failed")
-	}
-
-	
-	return fqdn, nil
+	}	
 }
 
 type StaticResolver struct{
