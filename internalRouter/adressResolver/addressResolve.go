@@ -69,9 +69,6 @@ type ClientCtx struct { // bool persistently kills an upstream session
 
 
 
-
-
-
 type DownstreamResolve interface {
 	Resolve(req RequestedResource) (ResolvableEntry, error)
 	StartResource(req ResolvableEntry) (string,error)
@@ -103,7 +100,6 @@ func (k *K8sResolvable) GetResourceReq() RequestedResource{
 
 func (k *K8sResolvable) WatchStart(req RequestedResource) (ResolvableEntry,error) {
 
-
 	signalChan := make(chan bool)
 	r := &K8sResolvable{req: req, unblockOp: ClientCtx{StatusChan: &signalChan}}
 
@@ -119,16 +115,15 @@ func (k *K8sResolvable) ResourceOK() (bool, error) {
 		tmrC := time.NewTimer(15 * time.Second)
 		select{
 			case <-*k.unblockOp.StatusChan:
-			println("unblocked")
-
-			GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
-			tmrC.Stop()
-			return true, nil
+				println("unblocked")
+				GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
+				tmrC.Stop()
+				return true, nil
 	
 			case <-tmrC.C:
-			println("timeout")
-			GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
-			return false, fmt.Errorf("timeout")
+				println("timeout")
+				GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
+				return false, fmt.Errorf("timeout")
 		}
 
 }
@@ -243,34 +238,42 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 	if err != nil {
 
 		if apierrors.IsAlreadyExists(err) {
-			log.Print("Pod exists")
-			*res.unblockOp.StatusChan <- true //short circuits the waiter function, when it runs it will start right away
+
 			GlobalUnblock.Delete(podNameStr) // makes sure not to leak memory
 		}else{
 			log.Printf("Error creating pod: %v", err)
+			return nil, err
 		}
+
 	}
 
 	if p.Status.Phase == corev1.PodRunning {
 		log.Printf("Pod is running, signal completion downstream, do not register global demux map")
+		log.Print("Pod exists, no controller event expected")
+		*res.unblockOp.StatusChan <- true //short circuits the waiter function, when it runs it will start right away
 	}
 	
 	return &res, nil //default exist
 }
 
 //just starts a kubernetes pod, watching is handled separately
-func (k *KubernetesResolver) StartResource(req ResolvableEntry) (string,error) {
+func (k *KubernetesResolver) StartResource(req ResolvableEntry) (string, error) {
 	
 	svcName := "svc-" + req.GetResourceReq().EnvName
-	fqdn := req.GetResourceReq().EnvName+ "-" + req.GetResourceReq().EnvVersion + "." + svcName + ".svc.cluster.local"
+	podNameStr := req.GetResourceReq().EnvName + "-" + req.GetResourceReq().EnvVersion
+	namespace := req.GetResourceReq().EnvName
+
+	fqdn := podNameStr + "." + svcName + "." + namespace + ".svc.cluster.local"
 	
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
+	println("fqdn is: ", fqdn)
 
 	state, err := req.ResourceOK()
 	if err != nil {
 		return "", err
 	}
 	
+	time.Sleep(5 * time.Second)
 	if state{
 		return fqdn, nil
 	}else{

@@ -70,18 +70,15 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-
-
 	//init happens here, add later
 
 	
 	//failed to resolve at a basic level, drops connection
 	re, err := req.Resolver.Resolve(req)
 	if re == nil {
-		
+		ready <- nil
+		return
 	}
-
-
 
 	if err != nil {
 		writer.Write([]byte("\n\n         resolve failed\n\n"))
@@ -89,7 +86,7 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 		return
 	}	
 
-	connStr, err := req.Resolver.StartResource(req)
+	connStr, err := req.Resolver.StartResource(re)
 	if err != nil {
 		log.Printf("start failed with err: %s", err.Error())
 		ready <- nil
