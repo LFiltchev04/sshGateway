@@ -76,7 +76,14 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 
 	
 	//failed to resolve at a basic level, drops connection
-	if !req.Resolver.Resolve(req){
+	re, err := req.Resolver.Resolve(req)
+	if re == nil {
+		
+	}
+
+
+
+	if err != nil {
 		writer.Write([]byte("\n\n         resolve failed\n\n"))
 		ready <- nil
 		return

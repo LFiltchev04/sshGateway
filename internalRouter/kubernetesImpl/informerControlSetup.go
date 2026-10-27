@@ -65,20 +65,15 @@ func (kc *KubContext)InformerCache(kubeconfig string, url string, unblockChan ch
             			
 					entry, exists := re.GlobalUnblock.Get(newPod.Name)
 					if exists {
-					println("exists for pod:", newPod.Name)
-					*entry.StatusChan <- true
-				}else{
-					log.Println("No entry for pod")
-				}
+						println("exists for pod:", newPod.Name)
+						*entry.StatusChan <- true
+					}else{
+						log.Println("No entry for pod")
+					}
 
 
         			}
     			}
-
-
-				
-
-
 			}
 
 			

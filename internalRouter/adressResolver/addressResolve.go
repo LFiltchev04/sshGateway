@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 
@@ -21,6 +22,10 @@ type UnblockWatcher struct{
 	mu             sync.RWMutex
 	globalDemuxMap map[string]ClientCtx
 }
+
+
+
+
 
 var GlobalUnblock UnblockWatcher
 
@@ -55,11 +60,7 @@ type RequestedResource struct{
 }
 
 
-type ConnEntry struct {
-	WantedRes RequestedResource
-	backendUp bool
-	backendAddr string
-}
+
 
 type ClientCtx struct { // bool persistently kills an upstream session
 	StatusChan *chan bool
@@ -72,32 +73,85 @@ type ClientCtx struct { // bool persistently kills an upstream session
 
 
 type DownstreamResolve interface {
-	Resolve(req RequestedResource) bool
-	StartResource(req RequestedResource) (string,error)
+	Resolve(req RequestedResource) (ResolvableEntry, error)
+	StartResource(req ResolvableEntry) (string,error)
 }
 
 type KubernetesResolver struct{
 	client kubernetes.Interface
 	namespace string
 	informer cache.SharedIndexInformer
-
-	podDefinition corev1.Pod
-
-	UnblockOp ClientCtx 
 }
+
+
+//each resolve operation yields this thing, certain info about how a certain resource is to be started
+
+type ResolvableEntry interface {
+	WatchStart(req RequestedResource) (ResolvableEntry,error)
+	ResourceOK() (bool, error)
+	GetResourceReq() RequestedResource
+}
+
+type K8sResolvable struct {
+	req RequestedResource
+	unblockOp ClientCtx
+}
+
+func (k *K8sResolvable) GetResourceReq() RequestedResource{
+	return k.req
+}
+
+func (k *K8sResolvable) WatchStart(req RequestedResource) (ResolvableEntry,error) {
+
+
+	signalChan := make(chan bool)
+	r := &K8sResolvable{req: req, unblockOp: ClientCtx{StatusChan: &signalChan}}
+
+	
+	GlobalUnblock.Set(req.EnvName, r.unblockOp)
+	return r, nil
+}
+
+func (k *K8sResolvable) ResourceOK() (bool, error) {
+	
+	
+	svcName := "svc-" + k.req.EnvName
+	fqdn := k.req.EnvName+ "-" + k.req.EnvVersion + "." + svcName +"." + k.req.EnvName + ".svc.cluster.local"
+
+	//has to wait to be signalled by the informer cache to send something on the unblock channel
+
+
+	
+		tmrC := time.NewTimer(15 * time.Second)
+		select{
+			case <-*k.unblockOp.StatusChan:
+			println("unblocked")
+
+			GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
+			tmrC.Stop()
+			return true, nil
+	
+			case <-tmrC.C:
+			println("timeout")
+			GlobalUnblock.Delete(k.req.EnvName + "-" + k.req.EnvVersion)
+			return false, fmt.Errorf("timeout")
+		}
+
+}
+
 
 func NewKubernetesResolver(client kubernetes.Interface) *KubernetesResolver {
 	return &KubernetesResolver{client: client}
 }
 
 //returns bool if it can resolve 
-func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
+func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, error){
 	
 	
 
 	if k == nil || k.client == nil {
 		log.Print("Kubernetes resolver has no client")
-		return false
+		return nil, fmt.Errorf("no client")
 	}
 
 	ctx := context.TODO()
@@ -105,12 +159,12 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 
 	if err != nil {
 		log.Printf("couldnt find the PV for %s with err %v", req.EnvName, err.Error())
-		return false
+		return nil, err
 	}
 
 	if pvc == nil {
 		log.Printf("The PVC pointer was null for %s", req.EnvName)
-		return false
+		return nil, fmt.Errorf("pvc nil")
 	}
 
 	log.Printf("PV name: %s", pvc.Name)
@@ -147,7 +201,18 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 					//		MountPath: "/mnt", //stub test, nothing more, remove for the proper link to the backend
 					//	},
 					//},
+					StartupProbe: &corev1.Probe{
+						InitialDelaySeconds: 1,
+						PeriodSeconds: 1,
+						FailureThreshold: 14,
+						ProbeHandler: corev1.ProbeHandler{
+							TCPSocket: &corev1.TCPSocketAction{
+								Port: intstr.FromInt(22),
+							},
+						},
+					},
 				},
+				
 
 			},
 			//Volumes: []corev1.Volume{
@@ -160,57 +225,62 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) bool{
 			//	},
 			//},
 		},
+
 	}
 
-	k.podDefinition = pod
+	
 
+	log.Printf("Starting resource for %s", req.EnvName)
+	
 	unblockChan := make(chan bool)
-	k.UnblockOp = ClientCtx{
+	unblockOp := ClientCtx{
 		StatusChan: &unblockChan,
 	}
 
+	res := K8sResolvable{}
+	res.unblockOp = unblockOp
+	res.req = req
+
 	println("adding to demux")
-	GlobalUnblock.Set(podNameStr, k.UnblockOp) //allows for the client to watch for unblock operations
+	GlobalUnblock.Set(podNameStr, unblockOp) //allows for the client to watch for unblock operations
 
-	return true //default exist
-}
 
-//just starts a kubernetes pod, watching is handled separately
-func (k *KubernetesResolver) StartResource(req RequestedResource) (string,error) {
-	log.Printf("Starting resource for %s", req.EnvName)
-	
-	var shouldWait bool
-	_, err := k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &k.podDefinition, metav1.CreateOptions{})
+	p, err := k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &pod, metav1.CreateOptions{})
 	if err != nil {
 
 		if apierrors.IsAlreadyExists(err) {
-			shouldWait = false
+			log.Print("Pod exists")
+			*res.unblockOp.StatusChan <- true //short circuits the waiter function, when it runs it will start right away
+			GlobalUnblock.Delete(podNameStr) // makes sure not to leak memory
 		}else{
-			return "", err
+			log.Printf("Error creating pod: %v", err)
 		}
 	}
 
+	if p.Status.Phase == corev1.PodRunning {
+		log.Printf("Pod is running, signal completion downstream, do not register global demux map")
+	}
+	
+	return &res, nil //default exist
+}
+
+//just starts a kubernetes pod, watching is handled separately
+func (k *KubernetesResolver) StartResource(req ResolvableEntry) (string,error) {
+	
 	svcName := "svc-" + req.EnvName
 	fqdn := req.EnvName+ "-" + req.EnvVersion + "." + svcName +"." + req.EnvName + ".svc.cluster.local"
 
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 
-
-	if shouldWait{
-		tmrC := time.NewTimer(15 * time.Second)
-		select{
-			case <-*k.UnblockOp.StatusChan:
-			println("unblocked")
-
-			GlobalUnblock.Delete(k.podDefinition.Name)
-			tmrC.Stop()
-			return fqdn, nil
+	stat, err := req.ResourceOK()
+	if err != nil {
+		return "", err
+	}
 	
-			case <-tmrC.C:
-			println("timeout")
-			GlobalUnblock.Delete(k.podDefinition.Name)
-			return "", fmt.Errorf("timeout")
-		}
+	if stat{
+		return fqdn, nil
+	}else{
+		return "", fmt.Errorf("Resource watch failed")
 	}
 
 	
