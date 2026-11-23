@@ -37,10 +37,10 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 
 				go func(channel ssh.Channel, requests <-chan *ssh.Request) {
 					defer channel.Close()
-					//channel.Write([]byte("\n\n===>          THIS IS BEING FORWARDED         <===\n\n"))
+					channel.Write([]byte("\n\n===>          THIS IS BEING FORWARDED         <===\n\n"))
 
 					sessionReady := make(chan *ssh.Session, 1)
-					go d.DownstreamHandshake(channel.Stderr(), channel, req, sessionReady)
+					go d.DownstreamHandshake(channel, channel, req, sessionReady)
 					
 					downstream := <-sessionReady
 					if downstream == nil {
@@ -56,13 +56,8 @@ func HandleInputChannel(conn *ssh.ServerConn, reqs <-chan *ssh.Request, chans <-
 
 						switch request.Type {
 							case "pty-req":
-								ok, err := downstream.SendRequest("pty-req", request.WantReply, request.Payload)
-								if err != nil {
-									log.Printf("Failed to forward pty-req: %v", err)
-								}
-							
 								if request.WantReply {
-									request.Reply(ok, request.Payload)
+									request.Reply(true, nil)
 								}
 							
 							case "shell":

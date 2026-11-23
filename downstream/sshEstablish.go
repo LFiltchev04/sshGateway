@@ -61,7 +61,7 @@ func (i *idleTimer) Write(p []byte) (int, error) {
 
 
 //is not idempotent, has to be ran once
-func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.RequestedResource,ready chan<- *ssh.Session) { 
+func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.RequestedResource,ready chan<- *ssh.Session) {
 	config := &ssh.ClientConfig{
 		User: "root",
 		Auth: []ssh.AuthMethod{
@@ -75,7 +75,7 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 	
 	//failed to resolve at a basic level, drops connection
 	re, err := req.Resolver.Resolve(req)
-	if re == nil {
+	if re == nil { //if no resolvable entry was found it exits the handshake using this thing
 		ready <- nil
 		return
 	}
@@ -114,17 +114,17 @@ func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.Request
 	}
 
 
-	idlTmr := &idleTimer{
-		stdin: reader,
-		stdout: writer,
-		stderr: writer,
-		resetChan: make(chan struct{}),
-	}
-	go idlTmr.resetableTimer(session)
+	//idlTmr := &idleTimer{
+	//	stdin: reader,
+	//	stdout: writer,
+	//	stderr: writer,
+	//	resetChan: make(chan struct{}),
+	//}
+	//go idlTmr.resetableTimer(session)
 
-	session.Stdin = idlTmr.stdin
-	session.Stdout = idlTmr.stdout
-	session.Stderr = idlTmr.stderr
+	session.Stdin = reader
+	session.Stdout = writer
+	session.Stderr = writer
 
 	if err := session.RequestPty("xterm-256color", 24, 80, ssh.TerminalModes{}); err != nil {
 		log.Printf("Failed to request downstream PTY: %v", err)

@@ -112,7 +112,7 @@ func (k *K8sResolvable) ResourceOK() (bool, error) {
 	
 	//has to wait to be signalled by the informer cache to send something on the unblock channel
 	
-		tmrC := time.NewTimer(15 * time.Second)
+		tmrC := time.NewTimer(55 * time.Second) 
 		select{
 			case <-*k.unblockOp.StatusChan:
 				println("unblocked")
@@ -161,7 +161,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 	podNameStr := req.EnvName + "-" + req.EnvVersion
 
 	svcName := "svc-" + req.EnvName
-	imageName := "docker.io/llf2004/" + req.EnvName + ":" + req.EnvVersion
+	imageName := "gw.aubg.net:2295/" + req.EnvName + ":" + req.EnvVersion
 
 	log.Printf("Pod name: %s", podNameStr)
 
@@ -234,12 +234,14 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 	GlobalUnblock.Set(podNameStr, unblockOp) //allows for the client to watch for unblock operations
 
 
-	p, err := k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &pod, metav1.CreateOptions{})
+	_, err = k.client.CoreV1().Pods(req.EnvName).Create(context.TODO(), &pod, metav1.CreateOptions{})
 	if err != nil {
 
 		if apierrors.IsAlreadyExists(err) {
 
 			GlobalUnblock.Delete(podNameStr) // makes sure not to leak memory
+			*res.unblockOp.StatusChan <- true //short circuits the waiter function, when it runs it will start right away
+			
 		}else{
 			log.Printf("Error creating pod: %v", err)
 			return nil, err
@@ -247,11 +249,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 
 	}
 
-	if p.Status.Phase == corev1.PodRunning {
-		log.Printf("Pod is running, signal completion downstream, do not register global demux map")
-		log.Print("Pod exists, no controller event expected")
-		*res.unblockOp.StatusChan <- true //short circuits the waiter function, when it runs it will start right away
-	}
+	
 	
 	return &res, nil //default exist
 }
@@ -273,7 +271,7 @@ func (k *KubernetesResolver) StartResource(req ResolvableEntry) (string, error) 
 		return "", err
 	}
 	
-	time.Sleep(5 * time.Second)
+	time.Sleep(25 * time.Second)
 	if state{
 		return fqdn, nil
 	}else{
