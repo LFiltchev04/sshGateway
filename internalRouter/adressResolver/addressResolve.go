@@ -165,6 +165,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 
 	log.Printf("Pod name: %s", podNameStr)
 
+	fls := false
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: podNameStr,
@@ -178,6 +179,7 @@ func (k *KubernetesResolver) Resolve(req RequestedResource) (ResolvableEntry, er
 		},
 
 		Spec: corev1.PodSpec{
+			AutomountServiceAccountToken: &fls,
 			Hostname: podNameStr,
 			Subdomain: svcName,
 			Containers: []corev1.Container{
