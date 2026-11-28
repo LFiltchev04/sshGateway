@@ -1,3 +1,4 @@
+//verifies auth callback and checks username format
 package sshlistener
 
 import(

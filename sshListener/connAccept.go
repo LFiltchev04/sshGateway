@@ -1,3 +1,4 @@
+//handles a singular connection for ssh
 package sshlistener
 
 import (

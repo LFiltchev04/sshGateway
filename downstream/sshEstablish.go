@@ -1,3 +1,4 @@
+//handles downstream ssh connections as well as timeouts
 package downstream
 
 import (
@@ -60,7 +61,7 @@ func (i *idleTimer) Write(p []byte) (int, error) {
 }
 
 
-//is not idempotent, has to be ran once
+//is not idempotent, has to be ran once, fix at some point i guess
 func DownstreamHandshake(writer io.ReadWriter, reader io.Reader, req rsl.RequestedResource,ready chan<- *ssh.Session) {
 	config := &ssh.ClientConfig{
 		User: "root",

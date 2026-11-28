@@ -1,3 +1,4 @@
+// gets a resources ip for upstream to connecto to
 package addressResolver
 
 import (
@@ -22,8 +23,6 @@ type UnblockWatcher struct{
 	mu             sync.RWMutex
 	globalDemuxMap map[string]ClientCtx
 }
-
-
 
 
 

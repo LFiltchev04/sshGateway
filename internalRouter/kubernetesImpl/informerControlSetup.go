@@ -1,3 +1,4 @@
+//makes sure a kubernetes resource is reachable
 package kubernetesImpl
 
 

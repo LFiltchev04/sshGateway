@@ -1,3 +1,4 @@
+//main call of the process, sets up listener and inits k8s controller
 package main
 
 import (

@@ -1,3 +1,5 @@
+//readable config file for SSH gateway
+
 package config
 
 import (
